@@ -1,0 +1,42 @@
+{
+  "variables": {
+    "app_user": "newsocialist",
+    "app_user_password": null,
+    "digital_ocean_token": null
+  },
+  "builders": [
+    {
+      "type": "digitalocean",
+      "api_token": "{{user `digital_ocean_token`}}",
+      "image": "ubuntu-18-04-x64",
+      "region": "ams3",
+      "size": "s-1vcpu-1gb",
+      "droplet_name": "newsocialist",
+      "snapshot_name": "newsocialist-{{timestamp}}",
+      "ssh_username": "root"
+    }
+  ],
+  "provisioners": [
+    { "type": "shell", "inline": ["apt-get -y update; apt-get -y upgrade"] },
+    { "type": "shell", "inline": ["apt-get -y install fail2ban"] },
+    { "type": "shell", "inline": [
+      "adduser --quiet --shell /bin/bash --home /home/{{user `app_user`}} {{user `app_user`}}",
+      "usermod -a -G sudo {{user `app_user`}}",
+      "echo {{user `app_user`}}:{{user `app_user_password`}} | chpasswd",
+      "mkdir /home/{{user `app_user`}}/.ssh && chmod 700 /home/{{user `app_user`}}/.ssh"
+    ]},
+    { "type": "file", "source": "user/authorized_keys", "destination": "/home/{{user `app_user`}}/.ssh/authorized_keys" },
+    { "type": "shell", "inline": [
+      "chmod 400 /home/{{user `app_user`}}/.ssh/authorized_keys",
+      "chown {{user `app_user`}}:{{user `app_user`}} /home/{{user `app_user`}} -R"
+    ]},
+    { "type": "shell", "inline": [
+      "echo 'PermitRootLogin no' >> /etc/ssh/sshd_config",
+      "echo 'PasswordAuthentication no' >> /etc/ssh/sshd_config"
+    ]},
+    { "type": "shell", "inline": [
+      "ufw allow 80",
+      "ufw allow 443"
+    ]}
+  ]
+}
